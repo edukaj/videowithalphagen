@@ -52,6 +52,7 @@ public:
 			try
 			{
 				const auto frame = cv::imread(f.absolutePath, cv::IMREAD_UNCHANGED);
+				const auto frame2 = cv::imread(f.absolutePath);
 
 //				videoWriterRGB << frame;
 
@@ -63,7 +64,8 @@ public:
 
 				if (m_ProgramOptions.verbose() > 5)
 				{
-					cv::imshow("frame", frame);
+//					cv::imshow("frame", frame);
+					cv::imshow("frame2", frame2);
 					cv::imshow("alpha", alphaFrame);
 
 					cv::waitKey(5);

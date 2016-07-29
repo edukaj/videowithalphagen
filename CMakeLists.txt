@@ -10,7 +10,6 @@ find_package( Boost 1.58 COMPONENTS
     REQUIRED )
 
 find_package( OpenCV REQUIRED )
-find_package( DevIL REQUIRED )
 
 add_definitions(-DBOOST_FILESYSTEM_NO_DEPRECATED)
 
@@ -22,5 +21,4 @@ add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_link_libraries( ${PROJECT_NAME}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
-    ${DevIL_LIBS}
     )
