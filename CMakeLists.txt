@@ -4,9 +4,10 @@ cmake_minimum_required(VERSION 3.1)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package( Boost 1.58 COMPONENTS
+find_package( Boost 1.61 COMPONENTS
     program_options
     filesystem
+    system
     REQUIRED )
 
 find_package( OpenCV REQUIRED )

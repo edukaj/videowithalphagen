@@ -246,4 +246,5 @@ const vector<Frame>& VideoConverter::frames() const noexcept
 ostream& operator << (ostream& os, const Frame& f)
 {
 	os << f.index << ": " << f.name << " " << f.ext << " \"" << f.absolutePath << '"';
+	return os;
 }
