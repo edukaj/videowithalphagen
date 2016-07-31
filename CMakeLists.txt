@@ -17,8 +17,6 @@ include_directories( ${Boost_INCLUDE_DIRS} )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 include_directories( ${FreeImage_INCLUDE_PATH} )
 
-include_directories( external )
-
 add_definitions(-DBOOST_ALL_DYN_LINK)
 add_definitions(-DBOOST_FILESYSTEM_NO_DEPRECATED)
 
