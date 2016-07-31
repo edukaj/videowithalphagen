@@ -209,11 +209,13 @@ private:
         auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
                 + m_ProgramOptions.videoExtension();
 
+        auto newFrameSize = cv::Size{m_FrameSize.width, m_FrameSize.height * 2};
+
         cv::VideoWriter videoWriterRGBWithAlphaAtBottom{
                     rgbVideoFilename,
                     m_ProgramOptions.fourcc(),
                     m_ProgramOptions.fps(),
-                    m_FrameSize
+                    newFrameSize
         };
 
         for( const auto f : m_Frames)
@@ -230,15 +232,13 @@ private:
                 cv::Mat alphaFrame;
                 cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
 
-                const auto frameHeight = rgbFrame.rows;
-                const auto newHeight = rgbFrame.rows * 2;
-                const auto frameWidth = rgbFrame.cols;
                 const auto type = rgbFrame.type();
 
-                cv::Mat newFrame(newHeight, frameWidth, type, cv::Scalar{0});
+                cv::Mat newFrame(newFrameSize.height, newFrameSize.width, type, cv::Scalar{0});
 
-                static const cv::Rect topRoi{0, 0, frameWidth, frameHeight};
-                static const cv::Rect bottomRoi{0, frameHeight, frameWidth, frameHeight};
+                static const cv::Rect topRoi{0, 0, m_FrameSize.width, m_FrameSize.height};
+                static const cv::Rect bottomRoi{0, m_FrameSize.height,
+                            m_FrameSize.width, m_FrameSize.height};
 
                 rgbFrame.copyTo(newFrame(topRoi));
                 alphaFrame.copyTo(newFrame(bottomRoi));
@@ -249,7 +249,7 @@ private:
                   cv::waitKey(1);
                 }
 
-                videoWriterRGBWithAlphaAtBottom << rgbFrame;
+                videoWriterRGBWithAlphaAtBottom << newFrame;
             }
             catch (const exception& exc)
             {
@@ -261,55 +261,7 @@ private:
 
     void generateVideoWithAlphaChannelAsGreen()
     {
-        auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
-                + m_ProgramOptions.videoExtension();
-        auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
-                + string{'.'} + m_ProgramOptions.videoExtension();
-
-        cv::VideoWriter videoWriterRGB{
-                    rgbVideoFilename,
-                    m_ProgramOptions.fourcc(),
-                    m_ProgramOptions.fps(),
-                    m_FrameSize
-        };
-
-        cv::VideoWriter videoWriterAlpha{
-                    alphaVideoFilename,
-                    m_ProgramOptions.fourcc(),
-                    m_ProgramOptions.fps(),
-                    m_FrameSize
-        };
-
-        for( const auto f : m_Frames)
-        {
-            try
-            {
-                const auto frame = loadImage(f.absolutePath);
-                cv::Mat rgbFrame;
-                cv::cvtColor(frame, rgbFrame, cv::COLOR_BGRA2BGR);
-
-                vector<cv::Mat> spl;
-                cv::split(frame, spl);
-
-                cv::Mat alphaChannel;
-                cv::cvtColor(spl[3], alphaChannel, cv::COLOR_GRAY2BGR);
-
-                if (m_ProgramOptions.verbose() > 5)
-                {
-                  cv::imshow("rgb", rgbFrame);
-                  cv::imshow("alphaChannel", alphaChannel);
-                  cv::waitKey(1);
-                }
-
-                videoWriterRGB << rgbFrame;
-                videoWriterAlpha << alphaChannel;
-            }
-            catch (const exception& exc)
-            {
-                cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
-                continue;
-            }
-        }
+        throw std::runtime_error{"This mode is not still implemented"};
     }
 
 private:
