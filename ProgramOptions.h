@@ -23,6 +23,9 @@ public:
 	int verbose() const noexcept;
 	const std::string& videoName() const noexcept;
 	const std::string& videoExtension() const noexcept;
+
+    int videoMode() const noexcept;
+
 	friend std::ostream& operator << (std::ostream& os, const ProgramOptions& options);
 
 private:

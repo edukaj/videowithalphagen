@@ -1,8 +1,10 @@
 #include "VideoConverter.h"
 #include "ProgramOptions.h"
+#include "opencvhelper.h"
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/highgui/highgui.hpp>  // Video write
+#include <opencv2/imgproc.hpp>
+#include <opencv2/videoio.hpp>  // Video write
+#include <opencv2/highgui.hpp>
 
 #include <FreeImage.h>
 
@@ -16,105 +18,6 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
-namespace internal {
-
-void FI2MAT(FIBITMAP* src, cv::Mat& dst)
-{
-    using namespace cv;
-
-    //FIT_BITMAP    //standard image : 1 - , 4 - , 8 - , 16 - , 24 - , 32 - bit
-    //FIT_UINT16    //array of unsigned short : unsigned 16 - bit
-    //FIT_INT16     //array of short : signed 16 - bit
-    //FIT_UINT32    //array of unsigned long : unsigned 32 - bit
-    //FIT_INT32     //array of long : signed 32 - bit
-    //FIT_FLOAT     //array of float : 32 - bit IEEE floating point
-    //FIT_DOUBLE    //array of double : 64 - bit IEEE floating point
-    //FIT_COMPLEX   //array of FICOMPLEX : 2 x 64 - bit IEEE floating point
-    //FIT_RGB16     //48 - bit RGB image : 3 x 16 - bit
-    //FIT_RGBA16    //64 - bit RGBA image : 4 x 16 - bit
-    //FIT_RGBF      //96 - bit RGB float image : 3 x 32 - bit IEEE floating point
-    //FIT_RGBAF     //128 - bit RGBA float image : 4 x 32 - bit IEEE floating point
-
-    int bpp = FreeImage_GetBPP(src);
-    FREE_IMAGE_TYPE fit = FreeImage_GetImageType(src);
-
-    int cv_type = -1;
-    int cv_cvt = -1;
-
-    switch (fit)
-    {
-    case FIT_UINT16: cv_type = DataType<ushort>::type; break;
-    case FIT_INT16: cv_type = DataType<short>::type; break;
-    case FIT_UINT32: cv_type = DataType<unsigned>::type; break;
-    case FIT_INT32: cv_type = DataType<int>::type; break;
-    case FIT_FLOAT: cv_type = DataType<float>::type; break;
-    case FIT_DOUBLE: cv_type = DataType<double>::type; break;
-    case FIT_COMPLEX: cv_type = DataType<Complex<double>>::type; break;
-    case FIT_RGB16: cv_type = DataType<Vec<ushort, 3>>::type; cv_cvt = COLOR_RGB2BGR; break;
-    case FIT_RGBA16: cv_type = DataType<Vec<ushort, 4>>::type; cv_cvt = COLOR_RGBA2BGRA; break;
-    case FIT_RGBF: cv_type = DataType<Vec<float, 3>>::type; cv_cvt = COLOR_RGB2BGR; break;
-    case FIT_RGBAF: cv_type = DataType<Vec<float, 4>>::type; cv_cvt = COLOR_RGBA2BGRA; break;
-    case FIT_BITMAP:
-        switch (bpp) {
-        case 8: cv_type = DataType<Vec<uchar, 1>>::type; break;
-        case 16: cv_type = DataType<Vec<uchar, 2>>::type; break;
-        case 24: cv_type = DataType<Vec<uchar, 3>>::type; break;
-        case 32: cv_type = DataType<Vec<uchar, 4>>::type; break;
-        default:
-            // 1, 4 // Unsupported natively
-            cv_type = -1;
-        }
-        break;
-    default:
-        // FIT_UNKNOWN // unknown type
-        dst = Mat(); // return empty Mat
-        return;
-    }
-
-    int width = FreeImage_GetWidth(src);
-    int height = FreeImage_GetHeight(src);
-    int step = FreeImage_GetPitch(src);
-
-    if (cv_type >= 0) {
-        dst = Mat(height, width, cv_type, FreeImage_GetBits(src), step);
-        if (cv_cvt > 0)
-        {
-            cvtColor(dst, dst, cv_cvt);
-        }
-    }
-    else {
-
-        vector<uchar> lut;
-        int n = cvRound(pow(2.0, bpp));
-        for (int i = 0; i < n; ++i)
-        {
-            lut.push_back(static_cast<uchar>((255 / (n - 1))*i));
-        }
-
-        FIBITMAP* palletized = FreeImage_ConvertTo8Bits(src);
-        BYTE* data = FreeImage_GetBits(src);
-        for (int r = 0; r < height; ++r) {
-            for (int c = 0; c < width; ++c) {
-                dst.at<uchar>(r, c) = saturate_cast<uchar>(lut[data[r*step + c]]);
-            }
-        }
-    }
-
-    flip(dst, dst, 0);
-}
-
-cv::Mat loadImage(const std::string& filename)
-{
-    auto type = FreeImage_GetFileType(filename.c_str());
-    auto bitmap = FreeImage_Load(type, filename.c_str());
-
-    cv::Mat mat;
-    FI2MAT(bitmap, mat);
-    return mat;
-}
-
-}
-
 struct VideoConverter::Impl {
 	explicit Impl(const ProgramOptions& po)
 		: m_ProgramOptions{po}
@@ -127,77 +30,21 @@ struct VideoConverter::Impl {
 	}
 
 	void generateVideo()
-	{
-		auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
-				+ m_ProgramOptions.videoExtension();
-//		auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
-//				+ string{'.'} + m_ProgramOptions.videoExtension();
+    {
+        switch (m_ProgramOptions.videoMode()) {
+        case 1:
+            generateRGBandAlphaVideo();
+            break;
 
-		cv::VideoWriter videoWriterRGB{
-					rgbVideoFilename,
-					m_ProgramOptions.fourcc(),
-					m_ProgramOptions.fps(),
-					m_FrameSize
-		};
+        case 2:
+            generateVideoWithAlphaChannelMergetAtBottom();
+            break;
 
-//		cv::VideoWriter videoWriterAlpha{
-//					alphaVideoFilename,
-//					m_ProgramOptions.fourcc(),
-//					m_ProgramOptions.fps(),
-//					m_FrameSize
-//		};
-
-		for( const auto f : m_Frames)
-        {
-			try
-			{
-                const auto frame = internal::loadImage(f.absolutePath);
-                cv::Mat rgbFrame;
-                cv::cvtColor(frame, rgbFrame, cv::COLOR_BGRA2BGR);
-
-                if (m_ProgramOptions.verbose() > 5)
-                {
-                  cv::imshow("rgbFrame", rgbFrame);
-                  cv::waitKey(5);
-                }
-
-                videoWriterRGB << frame;
-
-			}
-			catch (const exception& exc)
-			{
-				cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
-				continue;
-			}
+        case 3:
+        default:
+            generateVideoWithAlphaChannelAsGreen();
+            break;
         }
-
-//        for( const auto f : m_Frames)
-//        {
-//            try
-//            {
-//                const auto frame = internal::loadImage(f.absolutePath);
-
-//                vector<cv::Mat> spl;
-//                cv::split(frame, spl);
-
-//                cv::Mat alphaFrame;
-//                cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
-
-//                if (m_ProgramOptions.verbose() > 5)
-//                {
-//                  cv::imshow("alpha", spl[3]);
-//                  cv::waitKey(5);
-//                }
-
-//                videoWriterAlpha << spl[3];
-
-//            }
-//            catch (const exception& exc)
-//            {
-//                cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
-//                continue;
-//            }
-//        }
 	}
 
 	const vector<fs::path>& foundImages() const noexcept
@@ -228,7 +75,7 @@ private:
         if (m_ProgramOptions.verbose() > 4)
             cout << "opening " << filename << endl;
 
-        auto frame = internal::loadImage(filename);
+        auto frame = loadImage(filename);
 
         m_FrameSize = cv::Size{frame.cols, frame.rows};
         m_Channels = frame.channels();
@@ -291,7 +138,7 @@ private:
 		for_each(begin(m_Frames), end(m_Frames),
 				[this](const auto& frame)
         {
-            cv::Mat f = internal::loadImage(frame.absolutePath);
+            cv::Mat f = loadImage(frame.absolutePath);
 			cv::Size currSize{ f.cols, f.rows };
 
 			if ( currSize != m_FrameSize || f.channels() != m_Channels )
@@ -303,6 +150,167 @@ private:
 			}
 		});
 	}
+
+    void generateRGBandAlphaVideo()
+    {
+        auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
+                + m_ProgramOptions.videoExtension();
+        auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
+                + string{'.'} + m_ProgramOptions.videoExtension();
+
+        cv::VideoWriter videoWriterRGB{
+                    rgbVideoFilename,
+                    m_ProgramOptions.fourcc(),
+                    m_ProgramOptions.fps(),
+                    m_FrameSize
+        };
+
+        cv::VideoWriter videoWriterAlpha{
+                    alphaVideoFilename,
+                    m_ProgramOptions.fourcc(),
+                    m_ProgramOptions.fps(),
+                    m_FrameSize
+        };
+
+        for( const auto f : m_Frames)
+        {
+            try
+            {
+                const auto frame = loadImage(f.absolutePath);
+                cv::Mat rgbFrame;
+                cv::cvtColor(frame, rgbFrame, cv::COLOR_BGRA2BGR);
+
+                vector<cv::Mat> spl;
+                cv::split(frame, spl);
+
+                cv::Mat alphaChannel;
+                cv::cvtColor(spl[3], alphaChannel, cv::COLOR_GRAY2BGR);
+
+                if (m_ProgramOptions.verbose() > 5)
+                {
+                  cv::imshow("rgb", rgbFrame);
+                  cv::imshow("alphaChannel", alphaChannel);
+                  cv::waitKey(1);
+                }
+
+                videoWriterRGB << rgbFrame;
+                videoWriterAlpha << alphaChannel;
+            }
+            catch (const exception& exc)
+            {
+                cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
+                continue;
+            }
+        }
+    }
+
+    void generateVideoWithAlphaChannelMergetAtBottom()
+    {
+        auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
+                + m_ProgramOptions.videoExtension();
+
+        cv::VideoWriter videoWriterRGBWithAlphaAtBottom{
+                    rgbVideoFilename,
+                    m_ProgramOptions.fourcc(),
+                    m_ProgramOptions.fps(),
+                    m_FrameSize
+        };
+
+        for( const auto f : m_Frames)
+        {
+            try
+            {
+                const auto frame = loadImage(f.absolutePath);
+                cv::Mat rgbFrame;
+                cv::cvtColor(frame, rgbFrame, cv::COLOR_BGRA2BGR);
+
+                vector<cv::Mat> spl;
+                cv::split(frame, spl);
+
+                cv::Mat alphaFrame;
+                cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
+
+                const auto frameHeight = rgbFrame.rows;
+                const auto newHeight = rgbFrame.rows * 2;
+                const auto frameWidth = rgbFrame.cols;
+                const auto type = rgbFrame.type();
+
+                cv::Mat newFrame(newHeight, frameWidth, type, cv::Scalar{0});
+
+                static const cv::Rect topRoi{0, 0, frameWidth, frameHeight};
+                static const cv::Rect bottomRoi{0, frameHeight, frameWidth, frameHeight};
+
+                rgbFrame.copyTo(newFrame(topRoi));
+                alphaFrame.copyTo(newFrame(bottomRoi));
+
+                if (m_ProgramOptions.verbose() > 5)
+                {
+                  cv::imshow("newFrame", newFrame);
+                  cv::waitKey(1);
+                }
+
+                videoWriterRGBWithAlphaAtBottom << rgbFrame;
+            }
+            catch (const exception& exc)
+            {
+                cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
+                continue;
+            }
+        }
+    }
+
+    void generateVideoWithAlphaChannelAsGreen()
+    {
+        auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
+                + m_ProgramOptions.videoExtension();
+        auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
+                + string{'.'} + m_ProgramOptions.videoExtension();
+
+        cv::VideoWriter videoWriterRGB{
+                    rgbVideoFilename,
+                    m_ProgramOptions.fourcc(),
+                    m_ProgramOptions.fps(),
+                    m_FrameSize
+        };
+
+        cv::VideoWriter videoWriterAlpha{
+                    alphaVideoFilename,
+                    m_ProgramOptions.fourcc(),
+                    m_ProgramOptions.fps(),
+                    m_FrameSize
+        };
+
+        for( const auto f : m_Frames)
+        {
+            try
+            {
+                const auto frame = loadImage(f.absolutePath);
+                cv::Mat rgbFrame;
+                cv::cvtColor(frame, rgbFrame, cv::COLOR_BGRA2BGR);
+
+                vector<cv::Mat> spl;
+                cv::split(frame, spl);
+
+                cv::Mat alphaChannel;
+                cv::cvtColor(spl[3], alphaChannel, cv::COLOR_GRAY2BGR);
+
+                if (m_ProgramOptions.verbose() > 5)
+                {
+                  cv::imshow("rgb", rgbFrame);
+                  cv::imshow("alphaChannel", alphaChannel);
+                  cv::waitKey(1);
+                }
+
+                videoWriterRGB << rgbFrame;
+                videoWriterAlpha << alphaChannel;
+            }
+            catch (const exception& exc)
+            {
+                cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
+                continue;
+            }
+        }
+    }
 
 private:
 	const ProgramOptions& m_ProgramOptions;

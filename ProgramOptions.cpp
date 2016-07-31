@@ -69,6 +69,11 @@ public:
                 );
 	}
 
+    int videoMode() const noexcept
+    {
+        return m_VideoMode;
+    }
+
 	friend ostream& operator << (ostream& os, const Impl& imp)
 	{
 		if (imp.shouldDisplayOnlyHelp())
@@ -108,7 +113,12 @@ private:
                 ("fourcc,c", po::value<std::string>(&m_FourCC)->default_value(string{"LMP4"}),
 				 "fourcc code do use for encoding see: http://www.fourcc.org/codecs.php for other codecs")
 				("verbose,v", po::value<int>(&m_Verbose)->default_value(0),
-				 "verbose level");
+                 "verbose level")
+                ("video-mode,m", po::value<int>(&m_VideoMode)->default_value(1),
+                 "Video generation mode:\n"
+                 "1 -> two videos: one with rgb and the other with alpha\n"
+                 "2 -> a video with double height: on top rgb on bottom alpha\n"
+                 "3 -> a video with alpha channel trasformet as green\n");
 	}
 
 	bool isFourCCValid() const
@@ -120,12 +130,13 @@ private:
 	{
 		ostringstream os;
 
-		os << "prefix:    " << m_Prefix << '\n'
-		   << "out:       " << m_VideoName << '\n'
-		   << "extension: " << m_VideoExtension << '\n'
-		   << "fps:       " << m_FPS << '\n'
-		   << "fourcc:    " << m_FourCC << '\n'
-		   << "verbose:   " << m_Verbose << endl;
+        os << "prefix:     " << m_Prefix << '\n'
+           << "out:        " << m_VideoName << '\n'
+           << "extension:  " << m_VideoExtension << '\n'
+           << "fps:        " << m_FPS << '\n'
+           << "fourcc:     " << m_FourCC << '\n'
+           << "video-mode: " << m_VideoMode << endl
+           << "verbose:    " << m_Verbose << endl;
 
 		return os.str();
 	}
@@ -154,6 +165,7 @@ private:
 
 	bool m_ShouldDisplayOnlyHelp;
 	int m_Verbose;
+    int m_VideoMode;
 
 	double m_FPS;
 	string m_FourCC;
@@ -202,7 +214,12 @@ const string&ProgramOptions::videoName() const noexcept
 
 const string&ProgramOptions::videoExtension() const noexcept
 {
-	return m_Impl->videoExtension();
+    return m_Impl->videoExtension();
+}
+
+int ProgramOptions::videoMode() const noexcept
+{
+    return m_Impl->videoMode();
 }
 
 ostream& operator <<(ostream& os, const ProgramOptions& options)
