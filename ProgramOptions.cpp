@@ -13,7 +13,7 @@ enum class VerboseLevel : int {
 	NONE, LOW, MEDIUM, HIGH
 };
 
-class ProgramOptions::Impl {
+struct ProgramOptions::Impl {
 public:
 	Impl(int argc, char* argv[])
 		: m_CommandLineArgCount{argc}
@@ -61,7 +61,12 @@ public:
 
 	int fourcc() const noexcept
 	{
-		return cv::VideoWriter::fourcc(m_FourCC[0], m_FourCC[1], m_FourCC[2], m_FourCC[3] );
+        return cv::VideoWriter::fourcc(
+                toupper(m_FourCC[0]),
+                toupper(m_FourCC[1]),
+                toupper(m_FourCC[2]),
+                toupper(m_FourCC[3])
+                );
 	}
 
 	friend ostream& operator << (ostream& os, const Impl& imp)
@@ -100,7 +105,7 @@ private:
 				 "destination video extension")
 				("fps,f", po::value<double>(&m_FPS)->default_value(15),
 				 "frame per seconds")
-				("fourcc,c", po::value<std::string>(&m_FourCC)->default_value("LMP4"s),
+                ("fourcc,c", po::value<std::string>(&m_FourCC)->default_value(string{"LMP4"}),
 				 "fourcc code do use for encoding see: http://www.fourcc.org/codecs.php for other codecs")
 				("verbose,v", po::value<int>(&m_Verbose)->default_value(0),
 				 "verbose level");

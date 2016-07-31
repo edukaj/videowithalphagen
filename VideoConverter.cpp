@@ -4,6 +4,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>  // Video write
 
+#include <FreeImage.h>
+
 #include <algorithm>
 #include <iterator>
 #include <vector>
@@ -14,8 +16,106 @@
 using namespace std;
 namespace fs = boost::filesystem;
 
-class VideoConverter::Impl {
-public:
+namespace internal {
+
+void FI2MAT(FIBITMAP* src, cv::Mat& dst)
+{
+    using namespace cv;
+
+    //FIT_BITMAP    //standard image : 1 - , 4 - , 8 - , 16 - , 24 - , 32 - bit
+    //FIT_UINT16    //array of unsigned short : unsigned 16 - bit
+    //FIT_INT16     //array of short : signed 16 - bit
+    //FIT_UINT32    //array of unsigned long : unsigned 32 - bit
+    //FIT_INT32     //array of long : signed 32 - bit
+    //FIT_FLOAT     //array of float : 32 - bit IEEE floating point
+    //FIT_DOUBLE    //array of double : 64 - bit IEEE floating point
+    //FIT_COMPLEX   //array of FICOMPLEX : 2 x 64 - bit IEEE floating point
+    //FIT_RGB16     //48 - bit RGB image : 3 x 16 - bit
+    //FIT_RGBA16    //64 - bit RGBA image : 4 x 16 - bit
+    //FIT_RGBF      //96 - bit RGB float image : 3 x 32 - bit IEEE floating point
+    //FIT_RGBAF     //128 - bit RGBA float image : 4 x 32 - bit IEEE floating point
+
+    int bpp = FreeImage_GetBPP(src);
+    FREE_IMAGE_TYPE fit = FreeImage_GetImageType(src);
+
+    int cv_type = -1;
+    int cv_cvt = -1;
+
+    switch (fit)
+    {
+    case FIT_UINT16: cv_type = DataType<ushort>::type; break;
+    case FIT_INT16: cv_type = DataType<short>::type; break;
+    case FIT_UINT32: cv_type = DataType<unsigned>::type; break;
+    case FIT_INT32: cv_type = DataType<int>::type; break;
+    case FIT_FLOAT: cv_type = DataType<float>::type; break;
+    case FIT_DOUBLE: cv_type = DataType<double>::type; break;
+    case FIT_COMPLEX: cv_type = DataType<Complex<double>>::type; break;
+    case FIT_RGB16: cv_type = DataType<Vec<ushort, 3>>::type; cv_cvt = COLOR_RGB2BGR; break;
+    case FIT_RGBA16: cv_type = DataType<Vec<ushort, 4>>::type; cv_cvt = COLOR_RGBA2BGRA; break;
+    case FIT_RGBF: cv_type = DataType<Vec<float, 3>>::type; cv_cvt = COLOR_RGB2BGR; break;
+    case FIT_RGBAF: cv_type = DataType<Vec<float, 4>>::type; cv_cvt = COLOR_RGBA2BGRA; break;
+    case FIT_BITMAP:
+        switch (bpp) {
+        case 8: cv_type = DataType<Vec<uchar, 1>>::type; break;
+        case 16: cv_type = DataType<Vec<uchar, 2>>::type; break;
+        case 24: cv_type = DataType<Vec<uchar, 3>>::type; break;
+        case 32: cv_type = DataType<Vec<uchar, 4>>::type; break;
+        default:
+            // 1, 4 // Unsupported natively
+            cv_type = -1;
+        }
+        break;
+    default:
+        // FIT_UNKNOWN // unknown type
+        dst = Mat(); // return empty Mat
+        return;
+    }
+
+    int width = FreeImage_GetWidth(src);
+    int height = FreeImage_GetHeight(src);
+    int step = FreeImage_GetPitch(src);
+
+    if (cv_type >= 0) {
+        dst = Mat(height, width, cv_type, FreeImage_GetBits(src), step);
+        if (cv_cvt > 0)
+        {
+            cvtColor(dst, dst, cv_cvt);
+        }
+    }
+    else {
+
+        vector<uchar> lut;
+        int n = cvRound(pow(2.0, bpp));
+        for (int i = 0; i < n; ++i)
+        {
+            lut.push_back(static_cast<uchar>((255 / (n - 1))*i));
+        }
+
+        FIBITMAP* palletized = FreeImage_ConvertTo8Bits(src);
+        BYTE* data = FreeImage_GetBits(src);
+        for (int r = 0; r < height; ++r) {
+            for (int c = 0; c < width; ++c) {
+                dst.at<uchar>(r, c) = saturate_cast<uchar>(lut[data[r*step + c]]);
+            }
+        }
+    }
+
+    flip(dst, dst, 0);
+}
+
+cv::Mat loadImage(const std::string& filename)
+{
+    auto type = FreeImage_GetFileType(filename.c_str());
+    auto bitmap = FreeImage_Load(type, filename.c_str());
+
+    cv::Mat mat;
+    FI2MAT(bitmap, mat);
+    return mat;
+}
+
+}
+
+struct VideoConverter::Impl {
 	explicit Impl(const ProgramOptions& po)
 		: m_ProgramOptions{po}
 	{
@@ -30,8 +130,8 @@ public:
 	{
 		auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
 				+ m_ProgramOptions.videoExtension();
-		auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
-				+ string{'.'} + m_ProgramOptions.videoExtension();
+//		auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
+//				+ string{'.'} + m_ProgramOptions.videoExtension();
 
 		cv::VideoWriter videoWriterRGB{
 					rgbVideoFilename,
@@ -40,68 +140,64 @@ public:
 					m_FrameSize
 		};
 
-		cv::VideoWriter videoWriterAlpha{
-					alphaVideoFilename,
-					m_ProgramOptions.fourcc(),
-					m_ProgramOptions.fps(),
-					m_FrameSize
-		};
+//		cv::VideoWriter videoWriterAlpha{
+//					alphaVideoFilename,
+//					m_ProgramOptions.fourcc(),
+//					m_ProgramOptions.fps(),
+//					m_FrameSize
+//		};
 
 		for( const auto f : m_Frames)
-		{
+        {
 			try
 			{
-				const auto frame = cv::imread(f.absolutePath, cv::IMREAD_UNCHANGED);
-				const auto frame2 = cv::imread(f.absolutePath);
+                const auto frame = internal::loadImage(f.absolutePath);
+                cv::Mat rgbFrame;
+                cv::cvtColor(frame, rgbFrame, cv::COLOR_BGRA2BGR);
 
-//				videoWriterRGB << frame;
+                if (m_ProgramOptions.verbose() > 5)
+                {
+                  cv::imshow("rgbFrame", rgbFrame);
+                  cv::waitKey(5);
+                }
 
-				vector<cv::Mat> spl;
-				cv::split(frame, spl);
+                videoWriterRGB << frame;
 
-				cv::Mat alphaFrame;
-				cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
-
-				if (m_ProgramOptions.verbose() > 5)
-				{
-//					cv::imshow("frame", frame);
-					cv::imshow("frame2", frame2);
-					cv::imshow("alpha", alphaFrame);
-
-					cv::waitKey(5);
-				}
 			}
 			catch (const exception& exc)
 			{
 				cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
 				continue;
 			}
+        }
 
-//			try
-//			{
-//				const auto frame = cv::imread(f.absolutePath, cv::IMREAD_UNCHANGED );
+//        for( const auto f : m_Frames)
+//        {
+//            try
+//            {
+//                const auto frame = internal::loadImage(f.absolutePath);
 
-//				vector<cv::Mat> spl;
-//				cv::split(frame, spl);
+//                vector<cv::Mat> spl;
+//                cv::split(frame, spl);
 
-//				cv::Mat alphaFrame;
-//				cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
+//                cv::Mat alphaFrame;
+//                cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
 
-//				videoWriterAlpha << alphaFrame;
+//                if (m_ProgramOptions.verbose() > 5)
+//                {
+//                  cv::imshow("alpha", spl[3]);
+//                  cv::waitKey(5);
+//                }
 
-//				if (m_ProgramOptions.verbose() > 5)
-//				{
-//					cv::imshow("alphaFrame", alphaFrame);
-//					cv::waitKey(15);
-//				}
-//			}
-//			catch (const exception& exc)
-//			{
-//				cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
-//				continue;
-//			}
+//                videoWriterAlpha << spl[3];
 
-		}
+//            }
+//            catch (const exception& exc)
+//            {
+//                cerr << "skipping " << f.absolutePath << ":" << exc.what() << endl;
+//                continue;
+//            }
+//        }
 	}
 
 	const vector<fs::path>& foundImages() const noexcept
@@ -128,20 +224,20 @@ private:
 	void getFrameInfo()
 	{
 		const auto filename = fs::canonical(m_Paths.front()).string();
-		cout << "opening " << filename << endl;
 
-		const auto frame = cv::imread(m_Paths.front().string(), cv::IMREAD_UNCHANGED);
-		m_FrameSize = cv::Size{frame.cols, frame.rows };
+        if (m_ProgramOptions.verbose() > 4)
+            cout << "opening " << filename << endl;
 
-		if (m_FrameSize.width < 1 || m_FrameSize.height < 1)
-			throw runtime_error{"frame size cannot be 0"};
+        auto frame = internal::loadImage(filename);
 
-		m_Channels = frame.channels();
+        m_FrameSize = cv::Size{frame.cols, frame.rows};
+        m_Channels = frame.channels();
 
-		if (m_Channels != 4)
-		{
-			throw runtime_error{"frame must have 4 channels"};
-		}
+        if (m_FrameSize.width < 1 || m_FrameSize.height < 1)
+            throw runtime_error{"frame size cannot be 0"};
+
+        if (m_Channels != 4)
+            throw runtime_error{"frame must have 4 channels"};
 	}
 
 	void filterPaths()
@@ -194,8 +290,8 @@ private:
 
 		for_each(begin(m_Frames), end(m_Frames),
 				[this](const auto& frame)
-		{
-			cv::Mat f = cv::imread(frame.absolutePath, cv::IMREAD_UNCHANGED);
+        {
+            cv::Mat f = internal::loadImage(frame.absolutePath);
 			cv::Size currSize{ f.cols, f.rows };
 
 			if ( currSize != m_FrameSize || f.channels() != m_Channels )

@@ -11,7 +11,15 @@ find_package( Boost 1.61 COMPONENTS
     REQUIRED )
 
 find_package( OpenCV REQUIRED )
+find_package( FreeImage REQUIRED )
 
+include_directories( ${Boost_INCLUDE_DIRS} )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+include_directories( ${FreeImage_INCLUDE_PATH} )
+
+include_directories( external )
+
+add_definitions(-DBOOST_ALL_DYN_LINK)
 add_definitions(-DBOOST_FILESYSTEM_NO_DEPRECATED)
 
 aux_source_directory( . SRC_LIST)
@@ -22,4 +30,5 @@ add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_link_libraries( ${PROJECT_NAME}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
+    ${FreeImage_LIBRARY}
     )
