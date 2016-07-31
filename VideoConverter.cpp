@@ -61,8 +61,11 @@ private:
 	void extractPaths(fs::path p = fs::path{"."})
 	{
 		vector<fs::path> result;
-		copy(fs::directory_iterator(p), fs::directory_iterator(),
-				back_inserter(m_Paths));
+        copy_if(fs::directory_iterator(p), fs::directory_iterator(),
+                back_inserter(m_Paths), [](const auto& p)
+        {
+            return fs::is_regular_file(p);
+        });
 
 		if (m_Paths.empty())
 			throw invalid_argument{"no images found"};
@@ -188,9 +191,10 @@ private:
 
                 if (m_ProgramOptions.verbose() > 5)
                 {
-                  cv::imshow("rgb", rgbFrame);
-                  cv::imshow("alphaChannel", alphaChannel);
-                  cv::waitKey(1);
+                    cout << "parsing " << f.absolutePath << endl;
+                    cv::imshow("rgb", rgbFrame);
+                    cv::imshow("alphaChannel", alphaChannel);
+                    cv::waitKey(1);
                 }
 
                 videoWriterRGB << rgbFrame;
@@ -245,8 +249,9 @@ private:
 
                 if (m_ProgramOptions.verbose() > 5)
                 {
-                  cv::imshow("newFrame", newFrame);
-                  cv::waitKey(1);
+                    cout << "parsing " << f.absolutePath << endl;
+                    cv::imshow("newFrame", newFrame);
+                    cv::waitKey(1);
                 }
 
                 videoWriterRGBWithAlphaAtBottom << newFrame;
