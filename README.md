@@ -34,6 +34,12 @@ This utility can generate different kind of video.
 You can choose with -m options use help to see all options.
 
 # Build
+To build the program you need a C++ 14 coplaiant compieler. Tested compilers are
+gcc 5+ and Visual Studio C++ 2015.
+
+**Note that FreeImage need a patch for Visual Studio 2015 the patch can be
+downloaded to [this url](https://sourceforge.net/p/freeimage/patches/108/)**
+
 The library depends from
  * OpenCV 2.4+ (used 3.1),
  * Boost C++ 1.58 >
