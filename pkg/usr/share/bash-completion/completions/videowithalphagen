@@ -1,0 +1,25 @@
+# file: fontdef_autocompletition
+# fontdef parameter-completion
+
+_videowithalphagen()   #  By convention, the function name
+{                 #+ starts with an underscore.
+    local cur prev options
+
+    COMPREPLY=()
+
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+
+    # Select precisely the tokens from schroot --help that begin with a dash
+    options=$(fontdef --help | sed 's/\(^\|[[:space:]]\)[^[:space:]-][^[:space:]]*//g')
+
+    case "${cur}" in
+    -*)
+      COMPREPLY=( $(compgen -W "${options}" -- $cur) )
+      ;;
+    esac
+
+    return 0
+}
+
+complete -F _videowithalphagen -o filenames videowithalphagen
