@@ -31,10 +31,6 @@ struct VideoConverter::Impl {
 
 	void generateVideo()
     {
-		// print info on program options
-		if (m_ProgramOptions.verbose() > 2)
-			cout << m_ProgramOptions << endl;
-
         switch (m_ProgramOptions.videoMode()) {
         case 1:
             generateRGBandAlphaVideo();
@@ -159,10 +155,12 @@ private:
 
     void generateRGBandAlphaVideo()
     {
-        auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
+		using namespace string_literals;
+
+		auto rgbVideoFilename = m_ProgramOptions.videoName() + "."s
                 + m_ProgramOptions.videoExtension();
-        auto alphaVideoFilename = m_ProgramOptions.videoName() + string{"_alpa"}
-                + string{'.'} + m_ProgramOptions.videoExtension();
+		auto alphaVideoFilename = m_ProgramOptions.videoName() + "_alpa"s
+				+ "."s + m_ProgramOptions.videoExtension();
 
         cv::VideoWriter videoWriterRGB{
                     rgbVideoFilename,
@@ -189,14 +187,14 @@ private:
                 vector<cv::Mat> spl;
                 cv::split(frame, spl);
 
-                cv::Mat alphaChannel;
-                cv::cvtColor(spl[3], alphaChannel, cv::COLOR_GRAY2BGR);
+				cv::Mat alphaFrame;
+				cv::cvtColor(spl[3], alphaFrame, cv::COLOR_GRAY2BGR);
 
                 videoWriterRGB << rgbFrame;
-                videoWriterAlpha << alphaChannel;
+				videoWriterAlpha << alphaFrame;
 
-				displayParsedFileIf(m_ProgramOptions.verbose() > 4);
-				displayWindowsIf(m_ProgramOptions.verbose() > 5);
+				displayParsedFileIf(m_ProgramOptions.verbose() > 4, f.absolutePath);
+				displayWindowsIf(m_ProgramOptions.verbose() > 5, rgbFrame, alphaFrame);
             }
             catch (const exception& exc)
             {
@@ -208,7 +206,7 @@ private:
 
     void generateVideoWithAlphaChannelMergetAtBottom()
     {
-        auto rgbVideoFilename = m_ProgramOptions.videoName() + string{'.'}
+		auto rgbVideoFilename = m_ProgramOptions.videoName() + "."s
                 + m_ProgramOptions.videoExtension();
 
         auto newFrameSize = cv::Size{m_FrameSize.width, m_FrameSize.height * 2};
@@ -243,11 +241,11 @@ private:
                             m_FrameSize.width, m_FrameSize.height};
 
                 rgbFrame.copyTo(newFrame(topRoi));
-                alphaFrame.copyTo(newFrame(bottomRoi));
+				alphaFrame.copyTo(newFrame(bottomRoi));
 
 				videoWriterRGBWithAlphaAtBottom << newFrame;
-				displayParsedFileIf(m_ProgramOptions.verbose() > 4);
-				displayWindowsIf(m_ProgramOptions.verbose() > 5);
+				displayParsedFileIf(m_ProgramOptions.verbose() > 4, f.absolutePath);
+				displayWindowIf(m_ProgramOptions.verbose() > 5, newFrame);
 
             }
             catch (const exception& exc)
@@ -263,17 +261,28 @@ private:
         throw std::runtime_error{"This mode is not still implemented"};
     }
 
-	void displayParsedFileIf(bool condition)
+	void displayParsedFileIf(bool condition, const string& filename )
 	{
 		if (condition)
-			cout << "parsing " << f.absolutePath << endl;
+			cout << "parsing " << filename << endl;
 	}
 
-	void displayWindowsIf(bool condition)
+	void displayWindowIf(bool condition, const cv::Mat& rgbFrame)
 	{
 		if (condition)
 		{
-			cv::imshow("newFrame", newFrame);
+			cv::imshow("video", rgbFrame);
+			cv::waitKey(1);
+		}
+	}
+
+
+	void displayWindowsIf(bool condition, const cv::Mat& rgbFrame, const cv::Mat& alphaFrame)
+	{
+		if (condition)
+		{
+			cv::imshow("video", rgbFrame);
+			cv::imshow("video", alphaFrame);
 			cv::waitKey(1);
 		}
 	}

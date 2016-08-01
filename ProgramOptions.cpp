@@ -25,6 +25,9 @@ public:
 
 		if (!isFourCCValid())
 			throw invalid_argument{"unknow fourcc code"};
+
+		if (shouldDisplayOnlyHelp())
+			cout << *this << endl;
 	}
 
 
@@ -77,7 +80,7 @@ public:
 	friend ostream& operator << (ostream& os, const Impl& imp)
 	{
 		if (imp.shouldDisplayOnlyHelp())
-			os << imp.description() << '\n'
+			os << imp.description() << "\n\n"
 			   << imp.usageDescription() << '\n'
 			   << imp.m_Desc << endl;
 
@@ -110,7 +113,7 @@ private:
 				 "destination video extension")
 				("fps,f", po::value<double>(&m_FPS)->default_value(15),
 				 "frame per seconds")
-                ("fourcc,c", po::value<std::string>(&m_FourCC)->default_value(string{"LMP4"}),
+				("fourcc,c", po::value<std::string>(&m_FourCC)->default_value("x264"s),
 				 "fourcc code do use for encoding see: http://www.fourcc.org/codecs.php for other codecs")
 				("verbose,v", po::value<int>(&m_Verbose)->default_value(0),
                  "verbose level")
@@ -118,7 +121,7 @@ private:
                  "Video generation mode:\n"
                  "1 -> two videos: one with rgb and the other with alpha\n"
                  "2 -> a video with double height: on top rgb on bottom alpha\n"
-                 "3 -> a video with alpha channel trasformet as green\n");
+				 "3 -> a video with alpha channel transformed as green\n");
 	}
 
 	bool isFourCCValid() const
@@ -145,7 +148,7 @@ private:
 	{
 		using namespace string_literals;
 
-		static auto desc = "This program allow to convert a sequenze of images into a video\n"
+		static auto desc = "This program allow to convert a sequence of images into a video\n"
 			   "The images must have the following signature name_xxx where xxx\n"
 			   "is a progressive number starting from one"s;
 		return desc;
@@ -155,7 +158,7 @@ private:
 	{
 		using namespace string_literals;
 
-		static auto usageDescription = "Usage:\n\tvwac -p image -o video"s;
+		static auto usageDescription = "Simple usage:\n\tvideowithalphagen -p image"s;
 		return usageDescription;
 	}
 
