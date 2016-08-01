@@ -13,23 +13,34 @@ is a progressive number starting from one
 		-o [ --out ] arg (=video)     destination video filename without extension
 		-e [ --extension ] arg (=avi) destination video extension
 		-f [ --fps ] arg (=15)        frame per seconds
-		-c [ --fourcc ] arg (=LMP4)   fourcc code do use for encoding see: 
-										http://www.fourcc.org/codecs.php for other 
+		-c [ --fourcc ] arg (=LMP4)   fourcc code do use for encoding see:
+										http://www.fourcc.org/codecs.php for other
 										codecs
 		-v [ --verbose ] arg (=0)     verbose level
 		-m [ --video-mode ] arg (=1)  Video generation mode:
-										1 -> two videos: one with rgb and the other 
+										1 -> two videos: one with rgb and the other
 										with alpha
-										2 -> a video with double height: on top rgb on 
+										2 -> a video with double height: on top rgb on
 										bottom alpha
-										3 -> a video with alpha channel trasformet as 
+										3 -> a video with alpha channel trasformet as
 										green
-                                
+
 # About
-This small utility create a video with different encoding 
-startig from a sequence of image.
+This small utility create a video with different encoding startig from a
+sequence of image. The images must have a common prefix followed by _ character
+and a sequential number.
 
-The images must have a common prefix followed by '_' 
-character and a number.
+This utility can generate different kind of video.
+You can choose with -m options use help to see all options.
 
-This utility can generate different kind of video. You can choose with -m options.
+# Build
+The library depends from
+ * OpenCV 2.4+ (used 3.1),
+ * Boost C++ 1.58 >
+ * FreeImage 3.17
+
+The build system use `CMake` but on linux the module to find FreeImage is not
+present. I've added a file called `FindFreeImage.cmake` to install in
+`/usr/share/cmake-*/Modules/` on Linux and on
+`%Program Files%/CMake/share/cmake-*/Modules` and manually specify
+`FreeImage_INCLUDE_PATH` and `FreeImage_LIBRARIES`
