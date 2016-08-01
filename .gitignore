@@ -63,6 +63,9 @@ Thumbs.db
 *.Debug
 *.Release
 
+# CMake generate files
+CMakeLists.txt.user
+
 # Python byte code
 *.pyc
 
