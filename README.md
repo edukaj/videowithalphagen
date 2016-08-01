@@ -1,3 +1,11 @@
+# About
+This small utility create a video with different encoding starting from a
+sequence of image. The images must have a common prefix followed by _ character
+and a sequential number.
+
+This utility can generate different kind of video.
+You can choose with -m options use help to see all options.
+
 # Usage
 
 This program allow to convert a sequence of images into a video
@@ -24,14 +32,6 @@ is a progressive number starting from one
                                     bottom alpha
                                     3 -> a video with alpha channel transformed as
                                     green
-
-# About
-This small utility create a video with different encoding starting from a
-sequence of image. The images must have a common prefix followed by _ character
-and a sequential number.
-
-This utility can generate different kind of video.
-You can choose with -m options use help to see all options.
 
 # Build
 To build the program you need a C++ 14 complaint compiler. Tested compilers are
