@@ -42,7 +42,7 @@ downloaded from [this url](https://sourceforge.net/p/freeimage/patches/108/)**
 
 The library depends from
  * OpenCV 2.4+ (used 3.1),
- * Boost C++ 1.58 >
+ * Boost C++ 1.58+
  * FreeImage 3.17
 
 The build system use `CMake` but on linux the module to find FreeImage is not
