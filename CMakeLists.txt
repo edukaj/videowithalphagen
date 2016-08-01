@@ -4,7 +4,9 @@ cmake_minimum_required(VERSION 3.1)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package( Boost 1.61 COMPONENTS
+SET(BOOST_MIN_VERSION "1.58.0")
+
+find_package( Boost ${BOOST_MIN_VERSION} COMPONENTS
     program_options
     filesystem
     system
@@ -28,5 +30,5 @@ add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_link_libraries( ${PROJECT_NAME}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
-    ${FreeImage_LIBRARY}
+    ${FreeImage_LIBRARIES}
     )
