@@ -10,17 +10,12 @@ int main(int argc, char *argv[])
 	{
 		ProgramOptions po{argc, argv};
 
-		// print info on program options
-		cout << po << endl;
-
 		if( po.shouldDisplayOnlyHelp())
 			return EXIT_SUCCESS;
 
 		VideoConverter vc{po};
 
-		const auto& listFrames = vc.frames();
-
-		if (listFrames.empty())
+		if (vc.frames().empty())
 			cout << "no files filtered" << endl;
 
 		vc.generateVideo();

@@ -31,6 +31,10 @@ struct VideoConverter::Impl {
 
 	void generateVideo()
     {
+		// print info on program options
+		if (m_ProgramOptions.verbose() > 2)
+			cout << m_ProgramOptions << endl;
+
         switch (m_ProgramOptions.videoMode()) {
         case 1:
             generateRGBandAlphaVideo();
@@ -60,7 +64,6 @@ struct VideoConverter::Impl {
 private:
 	void extractPaths(fs::path p = fs::path{"."})
 	{
-		vector<fs::path> result;
         copy_if(fs::directory_iterator(p), fs::directory_iterator(),
                 back_inserter(m_Paths), [](const auto& p)
         {
@@ -189,16 +192,11 @@ private:
                 cv::Mat alphaChannel;
                 cv::cvtColor(spl[3], alphaChannel, cv::COLOR_GRAY2BGR);
 
-                if (m_ProgramOptions.verbose() > 5)
-                {
-                    cout << "parsing " << f.absolutePath << endl;
-                    cv::imshow("rgb", rgbFrame);
-                    cv::imshow("alphaChannel", alphaChannel);
-                    cv::waitKey(1);
-                }
-
                 videoWriterRGB << rgbFrame;
                 videoWriterAlpha << alphaChannel;
+
+				displayParsedFileIf(m_ProgramOptions.verbose() > 4);
+				displayWindowsIf(m_ProgramOptions.verbose() > 5);
             }
             catch (const exception& exc)
             {
@@ -247,14 +245,10 @@ private:
                 rgbFrame.copyTo(newFrame(topRoi));
                 alphaFrame.copyTo(newFrame(bottomRoi));
 
-                if (m_ProgramOptions.verbose() > 5)
-                {
-                    cout << "parsing " << f.absolutePath << endl;
-                    cv::imshow("newFrame", newFrame);
-                    cv::waitKey(1);
-                }
+				videoWriterRGBWithAlphaAtBottom << newFrame;
+				displayParsedFileIf(m_ProgramOptions.verbose() > 4);
+				displayWindowsIf(m_ProgramOptions.verbose() > 5);
 
-                videoWriterRGBWithAlphaAtBottom << newFrame;
             }
             catch (const exception& exc)
             {
@@ -268,6 +262,21 @@ private:
     {
         throw std::runtime_error{"This mode is not still implemented"};
     }
+
+	void displayParsedFileIf(bool condition)
+	{
+		if (condition)
+			cout << "parsing " << f.absolutePath << endl;
+	}
+
+	void displayWindowsIf(bool condition)
+	{
+		if (condition)
+		{
+			cv::imshow("newFrame", newFrame);
+			cv::waitKey(1);
+		}
+	}
 
 private:
 	const ProgramOptions& m_ProgramOptions;

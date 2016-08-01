@@ -155,7 +155,7 @@ private:
 	{
 		using namespace string_literals;
 
-		static auto usageDescription = "Usage:\n\tvwac -p image -o video.avi"s;
+		static auto usageDescription = "Usage:\n\tvwac -p image -o video"s;
 		return usageDescription;
 	}
 
