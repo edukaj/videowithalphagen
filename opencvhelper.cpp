@@ -1,5 +1,3 @@
-#pragma once
-
 #include "opencvhelper.h"
 #include <opencv2/imgproc.hpp>
 #include <FreeImage.h>
