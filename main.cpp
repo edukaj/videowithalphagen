@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
 
 		if( po.shouldDisplayOnlyHelp())
 			return EXIT_SUCCESS;
+		else if( po.shouldDisplayOnlyVersion())
+			return EXIT_SUCCESS;
 
 		VideoConverter vc{po};
 

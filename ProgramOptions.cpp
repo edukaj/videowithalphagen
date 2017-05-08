@@ -1,4 +1,5 @@
 #include "ProgramOptions.h"
+#include "version.h"
 #include <boost/program_options.hpp>
 #include <opencv2/highgui.hpp>
 #include <iostream>
@@ -28,12 +29,20 @@ public:
 
 		if (shouldDisplayOnlyHelp())
 			cout << *this << endl;
+
+		if (shouldDisplayOnlyVersion())
+			cout << VIDEOWITHALPHA_VERSION_STR << endl;
 	}
 
 
 	bool shouldDisplayOnlyHelp() const noexcept
 	{
 		return m_OptionsMap.count("help") != 0 || m_CommandLineArgCount == 1;
+	}
+
+	bool shouldDisplayOnlyVersion() const noexcept
+	{
+		return m_OptionsMap.count("version");
 	}
 
 	int verbose() const noexcept
@@ -104,6 +113,7 @@ private:
 
 		m_Desc.add_options()
 				("help,h", "produce this message")
+				("version", "show program version")
 				("prefix,p",
 				 po::value<string>(&m_Prefix)->default_value("image"),
 				 "prefix of files")
@@ -167,6 +177,7 @@ private:
 	const int m_CommandLineArgCount;
 
 	bool m_ShouldDisplayOnlyHelp;
+	bool m_ShouldDisplayOnlyVersion;
 	int m_Verbose;
     int m_VideoMode;
 
@@ -193,6 +204,11 @@ ProgramOptions::~ProgramOptions()
 bool ProgramOptions::shouldDisplayOnlyHelp() const noexcept
 {
 	return m_Impl->shouldDisplayOnlyHelp();
+}
+
+bool ProgramOptions::shouldDisplayOnlyVersion() const noexcept
+{
+	return m_Impl->shouldDisplayOnlyVersion();
 }
 
 const string&ProgramOptions::prefix() const noexcept

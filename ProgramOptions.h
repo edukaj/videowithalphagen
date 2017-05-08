@@ -17,6 +17,7 @@ public:
 	ProgramOptions& operator = (const ProgramOptions&&) = delete;
 
 	bool shouldDisplayOnlyHelp() const noexcept;
+	bool shouldDisplayOnlyVersion() const noexcept;
 	const std::string& prefix() const noexcept;
 	double fps() const noexcept;
 	int fourcc() const noexcept;
