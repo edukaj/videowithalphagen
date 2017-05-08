@@ -1,27 +1,38 @@
 #!/bin/bash
 
 name=videowithalphagen
-version=$1
-bin=$2
+bin=${1:-build/${name}}
 
 usage() {
 	echo "usage:"
-	echo "build-deb version binary [arch=amd64] [dist=xenial]"
+	echo "make-deb version binary [binary=build/videowithalphagen] [arch=amd64] [dist=xenial]"
 	echo
-	echo "example build-dev 1.1-0 ../dist/fontdef"
+	echo "example:"
+	echo "make-deb"
 }
 
-if [[ $# -ne 2 && $# -ne 3 && $# -ne 4 ]]; then
+if [[ $# -gt 3 ]]; then
 	usage
 	exit 1 
 fi
 
+major=$(grep "#define VIDEOWITHALPHA_VERSION_MAJOR" version.h | cut --delimiter=' ' --fields=3)
+minor=$(grep "#define VIDEOWITHALPHA_VERSION_MINOR" version.h | cut --delimiter=' ' --fields=3)
+bugfix=$(grep "#define VIDEOWITHALPHA_VERSION_BUGFIX" version.h | cut --delimiter=' ' --fields=3)
+version=${major}.${minor}-${bugfix}
 
-folder=videowithalphagen_${version}
+echo ${name} version is ${version}
+
+if [[ $# -gt 3 ]]; then
+	usage
+	exit 1 
+fi
+
+folder=${name}_${version}
 bin_folder=${folder}/usr/bin
 debian=${folder}/DEBIAN
-arch=${3:-amd64}
-dist=${4:-xenial}
+arch=${2:-amd64}
+dist=${3:-xenial}
 
 if [ ! -d ${folder} ]; then
 	mkdir -p ${bin_folder}
@@ -32,7 +43,7 @@ if [ ${dist} == "xenial" ]; then
 	sed "s/version_to_replace/${version}/g;s/arch/${arch}/g" controlTemplateXenial > ${debian}/control
 	echo "creating package for xenial ${arch}"
 else:
-        sed "s/version_to_replace/${version}/g;s/arch/${arch}/g" controlTemplateTrusty > ${debian}/control
+    sed "s/version_to_replace/${version}/g;s/arch/${arch}/g" controlTemplateTrusty > ${debian}/control
 	echo "creating package for trusty ${arch}"
 fi
 
